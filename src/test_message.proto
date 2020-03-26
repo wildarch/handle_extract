@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package handle_extract;
+
+import "handle.proto";
+
+message TestMessage {
+    string content = 1;
+    oak.handle.Handle handle = 2 [(oak.handle.handle_type) = "usize"]; 
+}

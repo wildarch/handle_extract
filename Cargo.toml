@@ -1,0 +1,11 @@
+[package]
+name = "handle_extract"
+version = "0.1.0"
+authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+prost = { path = "third_party/prost" }
+
+[build-dependencies]
+prost-build = { path = "third_party/prost/prost-build" }
