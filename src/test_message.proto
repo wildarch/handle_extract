@@ -5,6 +5,11 @@ package handle_extract;
 import "handle.proto";
 
 message TestMessage {
-    string content = 1;
-    oak.handle.Handle handle = 2 [(oak.handle.handle_type) = "usize"]; 
+    string other_arbitrary_field = 1;
+    oak.handle.Sender test_sender = 2 [(oak.handle.handle_type) = ".handle_extract.TestHandleType"]; 
+    oak.handle.Receiver test_receiver = 3 [(oak.handle.handle_type) = ".handle_extract.TestHandleType"]; 
+}
+
+message TestHandleType {
+    string body = 1;
 }

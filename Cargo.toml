@@ -5,7 +5,8 @@ authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-prost = { path = "third_party/prost" }
+prost = { path = "../prost" }
+bytes = "*"
 
 [build-dependencies]
-prost-build = { path = "third_party/prost/prost-build" }
+prost-build = { path = "../prost/prost-build" }

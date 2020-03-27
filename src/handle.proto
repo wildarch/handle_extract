@@ -8,6 +8,10 @@ extend google.protobuf.FieldOptions {
   string handle_type = 79658;
 }
 
-message Handle {
+message Sender {
+    fixed64 id = 1;
+}
+
+message Receiver {
     fixed64 id = 1;
 }
