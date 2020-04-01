@@ -1,4 +1,6 @@
 fn main() {
-    prost_build::compile_protos(&["src/handle.proto", "src/test_message.proto"], &["src/"])
+    prost_build::Config::new()
+        .type_attribute(".", "#[derive(HandleExtract)]")
+        .compile_protos(&["src/handle.proto", "src/test_message.proto"], &["src/"])
         .unwrap();
 }

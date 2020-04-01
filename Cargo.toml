@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 prost = { path = "../prost" }
 bytes = "*"
+handle_extract_derive = { path = "handle_extract_derive" }
 
 [build-dependencies]
 prost-build = { path = "../prost/prost-build" }
