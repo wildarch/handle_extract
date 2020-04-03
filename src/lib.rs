@@ -1,8 +1,12 @@
 pub trait HandleExtract {
+    // TODO(daagra): Expose proper types instead of just a Vec<u64>
     fn extract(&mut self, handles: &mut Vec<u64>);
     fn inject(&mut self, handles: &mut Vec<u64>);
 }
 
+// Since handle extraction recurses through all message fields, we provide blanket impls for all
+// basic protobuf types.
+// TODO(daagra): Add more blanket impls (and define a macro to generate them).
 impl HandleExtract for u64 {
     fn extract(&mut self, _: &mut Vec<u64>) {
         // Do nothing
@@ -21,6 +25,8 @@ impl HandleExtract for String {
     }
 }
 
+// Makes extraction works with optional fields.
+// TODO(daagra): Add impl for `Vec<T>` (repeated fields) and `Box<T>` (recursive messages).
 impl<T: HandleExtract> HandleExtract for Option<T> {
     fn extract(&mut self, handles: &mut Vec<u64>) {
         if let Some(item) = self {
@@ -44,6 +50,9 @@ pub mod oak {
         use ::bytes::{Buf, BufMut};
         use prost::encoding::{DecodeContext, WireType};
 
+        /// Type-safe version of [oak::handle::Sender](../handle/struct.Sender.html).
+        ///
+        /// This is the type you will find in generated code.
         #[derive(Debug, Clone, PartialEq, Default)]
         pub struct Sender<T> {
             handle: super::handle::Sender,
@@ -70,6 +79,7 @@ pub mod oak {
             }
         }
 
+        // Lean on the auto-generated impl of oak::io::Sender.
         impl<T: Send + Sync + core::fmt::Debug> prost::Message for Sender<T> {
             fn encoded_len(&self) -> usize {
                 self.handle.encoded_len()
@@ -94,6 +104,9 @@ pub mod oak {
             }
         }
 
+        /// Type-safe version of [oak::handle::Receiver](../handle/struct.Receiver.html).
+        ///
+        /// This is the type you will find in generated code.
         #[derive(Debug, Clone, PartialEq, Default)]
         pub struct Receiver<T> {
             handle: super::handle::Receiver,
@@ -120,6 +133,7 @@ pub mod oak {
             }
         }
 
+        // Lean on the auto-generated impl of oak::io::Receiver.
         impl<T: Send + Sync + core::fmt::Debug> prost::Message for Receiver<T> {
             fn encoded_len(&self) -> usize {
                 self.handle.encoded_len()
