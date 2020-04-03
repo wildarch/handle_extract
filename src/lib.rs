@@ -3,6 +3,8 @@ pub trait HandleExtract {
     fn extract(&mut self, handles: &mut Vec<u64>);
     fn inject(&mut self, handles: &mut Vec<u64>);
 }
+// Import the procedural macro that automatically derives implementations of the trait.
+pub use handle_extract_derive::HandleExtract;
 
 // Since handle extraction recurses through all message fields, we provide blanket impls for all
 // basic protobuf types.
@@ -157,43 +159,5 @@ pub mod oak {
                 self.handle.merge_field(tag, wire_type, buf, ctx)
             }
         }
-    }
-}
-
-pub mod handle_extract {
-    use crate::HandleExtract;
-    use handle_extract_derive::HandleExtract;
-    include!(concat!(env!("OUT_DIR"), "/handle_extract.rs"));
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::handle_extract::TestMessage;
-    use crate::oak::io::{Receiver, Sender};
-    use crate::HandleExtract;
-
-    #[test]
-    fn extract_and_inject() {
-        let reference = TestMessage {
-            other_arbitrary_field: "Test".to_string(),
-            test_sender: Some(unsafe { Sender::from_raw(42) }),
-            test_receiver: Some(unsafe { Receiver::from_raw(1337) }),
-        };
-
-        let mut processed = reference.clone();
-        let mut handles = Vec::new();
-        processed.extract(&mut handles);
-
-        assert_eq!(handles, vec![42, 1337]);
-        let extracted_ref = TestMessage {
-            other_arbitrary_field: "Test".to_string(),
-            test_sender: Some(unsafe { Sender::from_raw(0) }),
-            test_receiver: Some(unsafe { Receiver::from_raw(0) }),
-        };
-        assert_eq!(extracted_ref, processed);
-
-        processed.inject(&mut handles);
-
-        assert_eq!(reference, processed);
     }
 }
