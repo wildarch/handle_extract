@@ -27,8 +27,7 @@ impl HandleExtract for String {
     }
 }
 
-// Makes extraction works with optional fields.
-// TODO(daagra): Add impl for `Vec<T>` (repeated fields) and `Box<T>` (recursive messages).
+// Makes extraction work with optional fields.
 impl<T: HandleExtract> HandleExtract for Option<T> {
     fn extract(&mut self, handles: &mut Vec<u64>) {
         if let Some(item) = self {
@@ -40,6 +39,32 @@ impl<T: HandleExtract> HandleExtract for Option<T> {
         if let Some(item) = self {
             item.inject(handles);
         }
+    }
+}
+
+// For repeated fields.
+impl<T: HandleExtract> HandleExtract for Vec<T> {
+    fn extract(&mut self, handles: &mut Vec<u64>) {
+        for item in self.iter_mut() {
+            item.extract(handles);
+        }
+    }
+
+    fn inject(&mut self, handles: &mut Vec<u64>) {
+        for item in self.iter_mut() {
+            item.inject(handles);
+        }
+    }
+}
+
+// For recursive messages.
+impl<T: HandleExtract> HandleExtract for Box<T> {
+    fn extract(&mut self, handles: &mut Vec<u64>) {
+        self.as_mut().extract(handles);
+    }
+
+    fn inject(&mut self, handles: &mut Vec<u64>) {
+        self.as_mut().inject(handles);
     }
 }
 

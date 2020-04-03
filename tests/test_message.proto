@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package tests;
+
+import "handle.proto";
+
+message TestMessage {
+    string other_arbitrary_field = 1;
+    oak.handle.Sender test_sender = 2 [(oak.handle.handle_type) = ".tests.TestHandleType"]; 
+    oak.handle.Receiver test_receiver = 3 [(oak.handle.handle_type) = ".tests.TestHandleType"]; 
+
+}
+
+message TestMessageWithEnum {
+    oneof either {
+        oak.handle.Sender either_sender = 1 [(oak.handle.handle_type) = ".tests.TestHandleType"]; 
+        oak.handle.Receiver either_receiver = 2 [(oak.handle.handle_type) = ".tests.TestHandleType"]; 
+    }
+}
+
+message RecursiveMessage {
+    oak.handle.Sender sender = 1 [(oak.handle.handle_type) = ".tests.TestHandleType"];
+    RecursiveMessage recursive_message = 2;
+}
+
+message TestHandleType {
+    string body = 1;
+}
