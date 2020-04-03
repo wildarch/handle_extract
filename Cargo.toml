@@ -5,9 +5,9 @@ authors = ["Daan de Graaf <daandegraaf9@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-prost = { path = "../prost" }
+prost = { path = "third_party/prost" }
 bytes = "*"
 handle_extract_derive = { path = "handle_extract_derive" }
 
 [build-dependencies]
-prost-build = { path = "../prost/prost-build" }
+prost-build = { path = "third_party/prost/prost-build" }

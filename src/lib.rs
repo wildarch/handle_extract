@@ -37,8 +37,6 @@ impl<T: HandleExtract> HandleExtract for Option<T> {
 
 pub mod oak {
     pub mod handle {
-        use crate::HandleExtract;
-        use handle_extract_derive::HandleExtract;
         include!(concat!(env!("OUT_DIR"), "/oak.handle.rs"));
     }
 
