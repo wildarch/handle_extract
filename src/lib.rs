@@ -1,70 +1,82 @@
-pub trait HandleExtract {
-    // TODO(daagra): Expose proper types instead of just a Vec<u64>
-    fn extract(&mut self, handles: &mut Vec<u64>);
-    fn inject(&mut self, handles: &mut Vec<u64>);
+pub type Handle = u64;
+
+pub trait HandleVisit {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F);
 }
+
+macro_rules! handle_visit_blanket_impl {
+    ($($t:ty),+) => {
+        $(
+            impl HandleVisit for $t {
+                fn visit<F: FnMut(&mut Handle)>(&mut self, _: F) {
+                    // Do nothing
+                }
+            }
+        )+
+    };
+}
+handle_visit_blanket_impl!(f64, f32, i32, i64, u32, u64, bool, String, Vec<u8>);
+
+pub fn extract_handles<T: HandleVisit>(msg: &mut T) -> Vec<Handle> {
+    let mut handles = Vec::new();
+    msg.visit(|handle: &mut Handle| {
+        handles.push(*handle);
+        *handle = 0;
+    });
+    handles
+}
+
+pub fn inject_handles<T: HandleVisit>(msg: &mut T, handles: &[Handle]) {
+    let mut handles = handles.iter();
+    msg.visit(|handle| {
+        *handle = *handles
+            .next()
+            .expect("Not enough handles provided to fill message");
+    });
+}
+
 // Import the procedural macro that automatically derives implementations of the trait.
-pub use handle_extract_derive::HandleExtract;
+pub use handle_extract_derive::HandleVisit;
 
-// Since handle extraction recurses through all message fields, we provide blanket impls for all
-// basic protobuf types.
-// TODO(daagra): Add more blanket impls (and define a macro to generate them).
-impl HandleExtract for u64 {
-    fn extract(&mut self, _: &mut Vec<u64>) {
-        // Do nothing
-    }
-    fn inject(&mut self, _: &mut Vec<u64>) {
-        // Do nothing
-    }
-}
+// Implementations for the types generated from different field modifiers
+// (https://github.com/danburkert/prost#scalar-values).
 
-impl HandleExtract for String {
-    fn extract(&mut self, _: &mut Vec<u64>) {
-        // Do nothing
-    }
-    fn inject(&mut self, _: &mut Vec<u64>) {
-        // Do nothing
-    }
-}
-
-// Makes extraction work with optional fields.
-impl<T: HandleExtract> HandleExtract for Option<T> {
-    fn extract(&mut self, handles: &mut Vec<u64>) {
-        if let Some(item) = self {
-            item.extract(handles);
-        }
-    }
-
-    fn inject(&mut self, handles: &mut Vec<u64>) {
-        if let Some(item) = self {
-            item.inject(handles);
+// Optional fields
+impl<T: HandleVisit> HandleVisit for Option<T> {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) {
+        if let Some(inner) = self {
+            inner.visit(visitor);
         }
     }
 }
 
 // For repeated fields.
-impl<T: HandleExtract> HandleExtract for Vec<T> {
-    fn extract(&mut self, handles: &mut Vec<u64>) {
+impl<T: HandleVisit> HandleVisit for Vec<T> {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, mut visitor: F) {
         for item in self.iter_mut() {
-            item.extract(handles);
-        }
-    }
-
-    fn inject(&mut self, handles: &mut Vec<u64>) {
-        for item in self.iter_mut() {
-            item.inject(handles);
+            item.visit(&mut visitor);
         }
     }
 }
 
 // For recursive messages.
-impl<T: HandleExtract> HandleExtract for Box<T> {
-    fn extract(&mut self, handles: &mut Vec<u64>) {
-        self.as_mut().extract(handles);
+impl<T: HandleVisit> HandleVisit for Box<T> {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) {
+        self.as_mut().visit(visitor);
     }
+}
 
-    fn inject(&mut self, handles: &mut Vec<u64>) {
-        self.as_mut().inject(handles);
+// For maps. This is only supported for maps that have a key implementing `Ord`, because we need to
+// be able to define an order in which to inject/extract handles. Since protobuf only supports
+// integral and string types for keys, having this constraint is fine.
+impl<K: Ord + core::hash::Hash, V: HandleVisit> HandleVisit for std::collections::HashMap<K, V> {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, mut visitor: F) {
+        let mut entries: Vec<(&K, &mut V)> = self.iter_mut().collect();
+        // Can be unstable because keys are guaranteed to be unique.
+        entries.sort_unstable_by_key(|&(k, _)| k);
+        for (_, v) in entries {
+            v.visit(&mut visitor);
+        }
     }
 }
 
@@ -95,14 +107,9 @@ pub mod oak {
             }
         }
 
-        impl<T> crate::HandleExtract for Sender<T> {
-            fn extract(&mut self, handles: &mut Vec<u64>) {
-                handles.push(self.handle.id);
-                self.handle.id = 0;
-            }
-
-            fn inject(&mut self, handles: &mut Vec<u64>) {
-                self.handle.id = handles.remove(0);
+        impl<T> crate::HandleVisit for Sender<T> {
+            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) {
+                visitor(&mut self.handle.id);
             }
         }
 
@@ -149,14 +156,9 @@ pub mod oak {
             }
         }
 
-        impl<T> crate::HandleExtract for Receiver<T> {
-            fn extract(&mut self, handles: &mut Vec<u64>) {
-                handles.push(self.handle.id);
-                self.handle.id = 0;
-            }
-
-            fn inject(&mut self, handles: &mut Vec<u64>) {
-                self.handle.id = handles.remove(0);
+        impl<T> crate::HandleVisit for Receiver<T> {
+            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) {
+                visitor(&mut self.handle.id);
             }
         }
 

@@ -5,8 +5,8 @@ extern crate quote;
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(HandleExtract)]
-pub fn handle_extract(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(HandleVisit)]
+pub fn handle_visit(input: TokenStream) -> TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
 
     let name = &ast.ident;
@@ -25,18 +25,10 @@ fn struct_impls(name: &syn::Ident, data: &syn::DataStruct) -> TokenStream {
     };
 
     let gen = quote! {
-        impl ::handle_extract::HandleExtract for #name {
-            fn extract(&mut self, handles: &mut Vec<u64>) {
-                // Loop over all fields and extract the handles
+        impl ::handle_extract::HandleVisit for #name {
+            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, mut visitor: F) {
                 #(
-                    self.#accessors.extract(handles);
-                )*
-            }
-
-            fn inject(&mut self, handles: &mut Vec<u64>) {
-                // Loop over all fields and inject the handles
-                #(
-                    self.#accessors.inject(handles);
+                    self.#accessors.visit(&mut visitor);
                 )*
             }
         }
@@ -59,19 +51,11 @@ fn enum_impls(name: &syn::Ident, data: &syn::DataEnum) -> TokenStream {
         .collect();
 
     let gen = quote! {
-        impl ::handle_extract::HandleExtract for #name {
-            fn extract(&mut self, handles: &mut Vec<u64>) {
+        impl ::handle_extract::HandleVisit for #name {
+            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, visitor: F) {
                 match self {
                     #(
-                        #name::#variants(v) => v.extract(handles),
-                    )*
-                }
-            }
-
-            fn inject(&mut self, handles: &mut Vec<u64>) {
-                match self {
-                    #(
-                        #name::#variants(v) => v.inject(handles),
+                        #name::#variants(v) => v.visit(visitor),
                     )*
                 }
             }

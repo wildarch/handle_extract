@@ -1,7 +1,6 @@
 include!(concat!(env!("OUT_DIR"), "/tests/tests.rs"));
 
 use ::handle_extract::oak::io::{Receiver, Sender};
-use ::handle_extract::HandleExtract;
 
 #[test]
 fn extract_and_inject() {
@@ -12,8 +11,7 @@ fn extract_and_inject() {
     };
 
     let mut processed = reference.clone();
-    let mut handles = Vec::new();
-    processed.extract(&mut handles);
+    let mut handles = ::handle_extract::extract_handles(&mut processed);
 
     assert_eq!(handles, vec![42, 1337]);
     let extracted_ref = TestMessage {
@@ -23,7 +21,7 @@ fn extract_and_inject() {
     };
     assert_eq!(extracted_ref, processed);
 
-    processed.inject(&mut handles);
+    ::handle_extract::inject_handles(&mut processed, &mut handles);
 
     assert_eq!(reference, processed);
 }
@@ -36,7 +34,6 @@ fn extract_enum() {
         })),
     };
 
-    let mut handles = Vec::new();
-    message.extract(&mut handles);
+    let handles = ::handle_extract::extract_handles(&mut message);
     assert_eq!(handles, vec![42]);
 }
