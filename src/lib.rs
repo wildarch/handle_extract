@@ -1,15 +1,15 @@
 pub type Handle = u64;
 
 pub trait HandleVisit {
-    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F);
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F;
 }
 
 macro_rules! handle_visit_blanket_impl {
     ($($t:ty),+) => {
         $(
             impl HandleVisit for $t {
-                fn visit<F: FnMut(&mut Handle)>(&mut self, _: F) {
-                    // Do nothing
+                fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F {
+                    visitor
                 }
             }
         )+
@@ -43,40 +43,44 @@ pub use handle_extract_derive::HandleVisit;
 
 // Optional fields
 impl<T: HandleVisit> HandleVisit for Option<T> {
-    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) {
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F {
         if let Some(inner) = self {
-            inner.visit(visitor);
+            inner.visit(visitor)
+        } else {
+            visitor
         }
     }
 }
 
 // For repeated fields.
 impl<T: HandleVisit> HandleVisit for Vec<T> {
-    fn visit<F: FnMut(&mut Handle)>(&mut self, mut visitor: F) {
-        for item in self.iter_mut() {
-            item.visit(&mut visitor);
-        }
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F {
+        self.iter_mut()
+            .fold(visitor, |visitor, item| item.visit(visitor))
     }
 }
 
 // For recursive messages.
 impl<T: HandleVisit> HandleVisit for Box<T> {
-    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) {
-        self.as_mut().visit(visitor);
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F {
+        self.as_mut().visit(visitor)
     }
 }
 
 // For maps. This is only supported for maps that have a key implementing `Ord`, because we need to
 // be able to define an order in which to inject/extract handles. Since protobuf only supports
 // integral and string types for keys, having this constraint is fine.
-impl<K: Ord + core::hash::Hash, V: HandleVisit> HandleVisit for std::collections::HashMap<K, V> {
-    fn visit<F: FnMut(&mut Handle)>(&mut self, mut visitor: F) {
+impl<K: Ord + core::hash::Hash, V: HandleVisit, S> HandleVisit
+    for std::collections::HashMap<K, V, S>
+{
+    fn visit<F: FnMut(&mut Handle)>(&mut self, visitor: F) -> F {
         let mut entries: Vec<(&K, &mut V)> = self.iter_mut().collect();
         // Can be unstable because keys are guaranteed to be unique.
         entries.sort_unstable_by_key(|&(k, _)| k);
-        for (_, v) in entries {
-            v.visit(&mut visitor);
-        }
+        entries
+            .into_iter()
+            .map(|(_, v)| v)
+            .fold(visitor, |visitor, value| value.visit(visitor))
     }
 }
 
@@ -108,8 +112,9 @@ pub mod oak {
         }
 
         impl<T> crate::HandleVisit for Sender<T> {
-            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) {
+            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) -> F {
                 visitor(&mut self.handle.id);
+                visitor
             }
         }
 
@@ -157,8 +162,9 @@ pub mod oak {
         }
 
         impl<T> crate::HandleVisit for Receiver<T> {
-            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) {
+            fn visit<F: FnMut(&mut crate::Handle)>(&mut self, mut visitor: F) -> F {
                 visitor(&mut self.handle.id);
+                visitor
             }
         }
 

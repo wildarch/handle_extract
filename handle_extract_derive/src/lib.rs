@@ -26,10 +26,12 @@ fn struct_impls(name: &syn::Ident, data: &syn::DataStruct) -> TokenStream {
 
     let gen = quote! {
         impl ::handle_extract::HandleVisit for #name {
-            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, mut visitor: F) {
+            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, visitor: F) -> F {
+                let mut _v = visitor;
                 #(
-                    self.#accessors.visit(&mut visitor);
+                    _v  = self.#accessors.visit(_v);
                 )*
+                _v
             }
         }
     };
@@ -52,7 +54,7 @@ fn enum_impls(name: &syn::Ident, data: &syn::DataEnum) -> TokenStream {
 
     let gen = quote! {
         impl ::handle_extract::HandleVisit for #name {
-            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, visitor: F) {
+            fn visit<F: FnMut(&mut ::handle_extract::Handle)>(&mut self, visitor: F) -> F {
                 match self {
                     #(
                         #name::#variants(v) => v.visit(visitor),
