@@ -125,6 +125,17 @@ fn recursive_extract() {
     assert_eq!(handles, vec![42]);
 }
 
+#[test]
+fn repeated_extract() {
+    let mut msg = RepeatedMessage {
+        sender: vec![sender(1), sender(2), sender(3)],
+    };
+
+    let handles = extract_handles(&mut msg);
+
+    assert_eq!(handles, vec![1, 2, 3]);
+}
+
 fn sender<T>(id: u64) -> Sender<T> {
     unsafe { Sender::from_raw(id) }
 }

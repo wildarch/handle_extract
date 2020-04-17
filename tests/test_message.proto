@@ -23,6 +23,10 @@ message RecursiveMessage {
     RecursiveMessage recursive_message = 2;
 }
 
+message RepeatedMessage {
+    repeated oak.handle.Sender sender = 1 [(oak.handle.handle_type) = ".tests.TestHandleType"];
+}
+
 message TestHandleType {
     string body = 1;
 }
